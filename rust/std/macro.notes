@@ -1,0 +1,274 @@
+0. vec!
+	注意在创建多个重复元素的 vec 时, 实际上创建过程使用的是 Clone
+	所以特别小心, 对于
+		vec![Rc::new(1); 5]
+	实际上是创建了一个 Rc, 然后后面的都是对第一个 Rc 的 clone, 它们实际上指向的还是同一个元素
+	
+
+0.5 assert! && assert_eq && assert_ne && debug_assert! &&  debug_assert_eq! && debug_assert_ne!
+	如果不满足条件的话都会 panic
+	debug_assert! 系列会在 release 下被移除
+
+1. cfg!
+	和 #[cfg] 相比, cfg! 可以直接用在 if/else 判断中
+	```
+	let my_directory = if cfg!(windows) {
+	    "windows-specific-directory"
+	} else {
+	    "unix-directory"
+	};
+	```
+
+	和 #[cfg] 相同, cfg! 也是在 compile-time 生效的, 然而 cfg! 不会移除任何代码
+
+2. column! && line! && file! && module_path
+	与名字作用相同, 获取当前代码在文件中的 column, line 还有文件名
+
+	module_path
+	```
+	mod test {
+		pub fn foo() {
+			assert!(module_path!().ends_with("test"));
+		}
+	}
+	```
+
+3. compile_error!
+	相当于编译期的 panic!
+	```
+	macro_rules! give_me_foo_or_bar {
+	    (foo) => {};
+	    (bar) => {};
+	    ($x:ident) => {
+	        compile_error!("This macro only accepts `foo` or `bar`");
+	    }
+	}
+	
+	give_me_foo_or_bar!(neither);
+	// ^ will fail at compile time with message "This macro only accepts `foo` or `bar`"
+	```
+
+	主动放出 compile error
+
+4. concat!
+	concat! 就是 concat, 会产生一个 &'static str
+	let s = concat!("test", 10, 'b', true);
+
+
+5. dbg!
+	将 debug 的结果写入 stderr (包含文件和代码信息)
+	会拿所有权, 可以传入引用来避免
+	会返回表达式的值
+	在 release 模式下表现相同
+
+	```
+	let a = dbg!(1 + 2);
+    println!("a: {}", a);
+	```
+	会产生
+
+	[src/main.rs:6] 1 + 2 = 3
+	a: 3
+
+6. env! && option_env
+	都是在编译器获取环境变量
+	env 如果拿不到相应的环境变量的话会出现编译错误, 可以自定义错误信息
+	let doc: &'static str = env!("documentation", "documentation env var");
+
+7. print! && println! && eprint && eprintln!
+	eprint 是 print 到 stderr 的
+
+8. format_args! && format!
+	format_args 是format! print! 等的基础
+	接受参数, 并产生一个 fmt::Arguments 类型的值, 这个值可以被重定向到其它地方
+	```
+	let debug = format!("{:?}", format_args!("{} foo {:?}", 1, 2));
+	```
+
+9. include! && include_bytes! && include_str!
+	include!
+		将 file 直接读入到程序的 bin 文件中, 会根据 context 直接转换为相同的类型
+	include_bytes!
+		将 文件 读成 bin 文件中的 bytes
+	include_str!
+		将 文件 直接读成 str 存入 bin 文件中
+
+10. is_x86_feature_detected 
+	运行时生效, 探测 cpu 是否支持某个 feature
+	更多列表详见: https://doc.rust-lang.org/std/macro.is_x86_feature_detected.html
+
+	if is_x86_feature_detected!("sse2") {
+        println!("sse2 detected");
+    } else {
+        println!("sse2 not detected");
+    }
+
+11. matches!
+	match 表达式一个方便的写法, 会返回一个 bool
+
+	```
+	let foo = 'f';
+	assert!(matches!(foo, 'A'..='Z' | 'a'..='z'));
+	
+	let bar = Some(4);
+	assert!(matches!(bar, Some(x) if x > 2)); 
+	```
+
+12. stringify!
+	会将传入的所有 token 转换成 &'static str
+	```
+	let one_plus_one = stringify!(1 + 1);
+	assert_eq!(one_plus_one, "1 + 1");
+	```
+
+13. todo! && unimplemented! && unreachable!
+	todo! 表示现在还没做, 等待被做, 错误信息 'not yet implemented'
+	unimplemented! 表示没做, 不一定要实现, 错误信息 'not implemented'
+
+	unreachable!
+		帮助编译器判断在逻辑上无法到达的代码
+		unsafe 的版本是 unreachable_unchecked, 如果在 unsafe 中走到这来, 会产生 UB
+
+14. thread_local!
+	产生一个 LocalKey
+
+	```
+	use std::cell::RefCell;
+	use std::thread;
+	
+	thread_local!(static FOO: RefCell<u32> = RefCell::new(1));
+	
+	FOO.with(|f| {
+	    assert_eq!(*f.borrow(), 1);
+	    *f.borrow_mut() = 2;
+	});
+	
+	// each thread starts out with the initial value of 1
+	let t = thread::spawn(move|| {
+	    FOO.with(|f| {
+	        assert_eq!(*f.borrow(), 1);
+	        *f.borrow_mut() = 3;
+	    });
+	});
+	
+	// wait for the thread to complete and bail out on panic
+	t.join().unwrap();
+	
+	// we retain our original value of 2 despite the child thread
+	FOO.with(|f| {
+	    assert_eq!(*f.borrow(), 2);
+	});
+
+	```
+	没太明白应用场景是什么
+
+15. write! && writeln!
+
+	write!
+		Writes formatted data into a buffer.
+	writeln!
+		在 write! 之后加一个 \n
+	
+	```
+	use std::io::Write;
+
+	fn main() -> std::io::Result<()> {
+	    let mut w = Vec::new();
+	    write!(&mut w, "test")?;
+	    write!(&mut w, "formatted {}", "arguments")?;
+	
+	    assert_eq!(w, b"testformatted arguments");
+	    Ok(())
+	}
+	```
+
+	write! 第一参数是一个 writer, writer 需要有一个 write_fmt 函数, 这个函数通常来自 
+		 std::fmt::Write  或者  std::io::Write
+	通常返回一个
+		 std::fmt::Result 或者  io::Result
+
+16: asm!
+	Experimental
+
+	unsafe {
+	    asm!("nop");
+	}
+
+	unsafe {
+	    asm!("mov {}, 5", out(reg) x);
+	}
+
+	
+
+	
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+
