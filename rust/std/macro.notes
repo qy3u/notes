@@ -130,7 +130,11 @@
 		unsafe 的版本是 unreachable_unchecked, 如果在 unsafe 中走到这来, 会产生 UB
 
 14. thread_local!
-	产生一个 LocalKey
+	产生一个 std::thread::LocalKey
+
+	简而言之, 每个线程自动产生一个不同的实例, 修改改实例不会影响别的线程中实例的值
+	同线程之内又可以共享该实例
+
 
 	```
 	use std::cell::RefCell;
@@ -160,7 +164,13 @@
 	});
 
 	```
-	没太明白应用场景是什么
+
+	rust 中的用例
+		https://github.com/async-rs/async-task/blob/b7a249680490991f92cc2144d4eff65e4effb3b7/examples/task-id.rs#L19
+
+	讲解 java 中 ThreadLocal 的文章
+		http://www.jasongj.com/java/threadlocal/
+
 
 15. write! && writeln!
 
@@ -197,78 +207,4 @@
 	unsafe {
 	    asm!("mov {}, 5", out(reg) x);
 	}
-
-	
-
-	
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-	
 
