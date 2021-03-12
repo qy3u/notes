@@ -63,7 +63,7 @@
 
 	```
 	let a = dbg!(1 + 2);
-    println!("a: {}", a);
+	println!("a: {}", a);
 	```
 	会产生
 
@@ -99,9 +99,9 @@
 
 	if is_x86_feature_detected!("sse2") {
         println!("sse2 detected");
-    } else {
+	} else {
         println!("sse2 not detected");
-    }
+	}
 
 11. matches!
 	match 表达式一个方便的写法, 会返回一个 bool
